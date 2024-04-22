@@ -1,0 +1,111 @@
+diff --git a/arch/arm64/boot/dts/renesas/r8a774c0-cat874.dts b/arch/arm64/boot/dts/renesas/r8a774c0-cat874.dts
+index 29089c1f4c2a..936dfb6037a4 100644
+--- a/arch/arm64/boot/dts/renesas/r8a774c0-cat874.dts
++++ b/arch/arm64/boot/dts/renesas/r8a774c0-cat874.dts
+@@ -102,6 +102,64 @@ sound_pins: sound {
+ 		groups = "ssi01239_ctrl", "ssi0_data";
+ 		function = "ssi";
+ 	};
++
++	qspi0_pins: qspi0 {
++		groups = "qspi0_ctrl", "qspi0_data4";
++		function = "qspi0";
++	};
++};
++
++&rpc {
++		pinctrl-0 = <&qspi0_pins>;
++		pinctrl-names = "default";
++		status = "okay";
++		flash@0 {
++				compatible = "winbond,w25m512jv", "jedec,spi-nor";
++				reg = <0>;
++				spi-max-frequency = <50000000>;
++				spi-rx-bus-width = <4>;
++
++		partitions {
++			compatible = "fixed-partitions";
++			#address-cells = <1>;
++			#size-cells = <1>;
++
++			bootparam@0 {
++				reg = <0x00000000 0x040000>;
++				read-only;
++			};
++
++			bl2@40000 {
++				reg = <0x00040000 0x140000>;
++				read-only;
++			};
++
++			cert_header_sa6@180000 {
++				reg = <0x00180000 0x040000>;
++				read-only;
++			};
++
++			bl31@1c0000 {
++				reg = <0x001c0000 0x040000>;
++				read-only;
++			};
++
++			tee@200000 {
++				reg = <0x00200000 0x100000>;
++				read-only;
++			};
++
++			uboot@300000 {
++				reg = <0x00300000 0x0f0000>;
++				read-only;
++			};
++
++			uboot-env@3f0000 {
++				reg = <0x003f0000 0x010000>;
++				read-only;
++			};
++		};
++	};
+ };
+ 
+ &hscif2 {
+diff --git a/arch/arm64/boot/dts/renesas/r8a774c0.dtsi b/arch/arm64/boot/dts/renesas/r8a774c0.dtsi
+index 2a296840865b..c9046b97e360 100644
+--- a/arch/arm64/boot/dts/renesas/r8a774c0.dtsi
++++ b/arch/arm64/boot/dts/renesas/r8a774c0.dtsi
+@@ -1695,6 +1695,23 @@ sdhi3: mmc@ee160000 {
+ 			status = "disabled";
+ 		};
+ 
++		rpc: spi@ee200000 {
++				compatible = "renesas,r8a774c0-rpc-if",
++							"renesas,rcar-gen3-rpc-if";
++				reg = <0 0xee200000 0 0x200>,
++					<0 0x08000000 0 0x4000000>,
++					<0 0xee208000 0 0x100>;
++				reg-names = "regs", "dirmap", "wbuf";
++				interrupts = <GIC_SPI 38 IRQ_TYPE_LEVEL_HIGH>;
++				clocks = <&cpg CPG_MOD 917>;
++				clock-names = "rpc";
++				power-domains = <&sysc R8A774C0_PD_ALWAYS_ON>;
++				resets = <&cpg 917>;
++				#address-cells = <1>;
++				#size-cells = <0>;
++				status = "disabled";
++		};
++
+ 		gic: interrupt-controller@f1010000 {
+ 			compatible = "arm,gic-400";
+ 			#interrupt-cells = <3>;
+diff --git a/drivers/mtd/spi-nor/winbond.c b/drivers/mtd/spi-nor/winbond.c
+index e5dfa786f190..49caf282704b 100644
+--- a/drivers/mtd/spi-nor/winbond.c
++++ b/drivers/mtd/spi-nor/winbond.c
+@@ -97,6 +97,9 @@ static const struct flash_info winbond_parts[] = {
+ 			     SECT_4K | SPI_NOR_DUAL_READ | SPI_NOR_QUAD_READ) },
+ 	{ "w25m512jv", INFO(0xef7119, 0, 64 * 1024, 1024,
+ 			    SECT_4K | SPI_NOR_QUAD_READ | SPI_NOR_DUAL_READ) },
++	{ "w25q512jv", INFO(0xef4020, 0, 64 * 1024, 1024,
++			    SECT_4K | SPI_NOR_DUAL_READ | SPI_NOR_QUAD_READ |
++			    SPI_NOR_HAS_LOCK | SPI_NOR_HAS_TB) },
+ };
+ 
+ /**
